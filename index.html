@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>爱莎英语 · 字母港</title>
+<meta name="description" content="方块世界里的英语启蒙：字母港 Lesson 1 可玩原型">
+<meta name="theme-color" content="#4c7a2f">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/png" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="mobile-web-app-capable" content="yes">
+<style>
+  :root{
+    --green:#4c7a2f; --green-dk:#3c5d22; --green-lt:#79b03f;
+    --paper:#f7f8f4; --ink:#1c2416; --wood:#a97c50; --sun:#f2c14e;
+    --line:rgba(28,36,22,.18);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden}
+  body{
+    font-family:"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    color:var(--ink);background:#bfe3f2;
+    touch-action:none;user-select:none;-webkit-user-select:none;
+  }
+  #scene{width:100%;height:100%;display:block;outline:none;touch-action:none}
+
+  /* ---------- 顶部 HUD ---------- */
+  #topbar{
+    position:fixed;top:0;left:0;right:0;z-index:20;
+    display:flex;align-items:center;gap:10px;
+    padding:calc(env(safe-area-inset-top,0px) + 10px) 14px 10px;
+    pointer-events:none;
+  }
+  #topbar>*{pointer-events:auto}
+  #progress{display:flex;gap:7px;background:rgba(255,255,255,.86);border:1px solid var(--line);padding:8px 12px}
+  #progress .dot{width:12px;height:12px;background:#dfe4d6;box-shadow:inset 0 0 0 1px var(--line)}
+  #progress .dot.done{background:var(--green-lt)}
+  #coin-wrap{margin-left:auto;position:relative;display:flex;align-items:center;gap:7px;
+    background:rgba(255,255,255,.86);border:1px solid var(--line);padding:7px 13px;font-weight:600}
+  #coin-wrap svg{display:block}
+  #coin-num{font-size:17px;min-width:1.2em;text-align:right}
+  .float-coin{
+    position:absolute;right:8px;top:-6px;color:#b8860b;font-weight:700;font-size:15px;
+    animation:floatUp .9s ease-out forwards;pointer-events:none;
+  }
+  @keyframes floatUp{from{transform:translateY(0);opacity:1}to{transform:translateY(-34px);opacity:0}}
+  .icon-btn{
+    width:42px;height:42px;display:flex;align-items:center;justify-content:center;
+    background:rgba(255,255,255,.86);border:1px solid var(--line);cursor:pointer;
+  }
+  .icon-btn:active{background:#eef2e6}
+  .icon-btn svg{width:22px;height:22px}
+
+  /* ---------- 任务卡 ---------- */
+  #prompt-card{
+    position:fixed;top:calc(env(safe-area-inset-top,0px) + 66px);left:50%;transform:translateX(-50%) translateY(-8px);
+    z-index:15;text-align:center;opacity:0;pointer-events:none;transition:all .25s ease;
+    background:rgba(255,255,255,.94);border:1px solid var(--line);border-top:4px solid var(--green);
+    padding:10px 26px 12px;min-width:230px;
+  }
+  #prompt-card.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  #prompt-card .p1{font-size:12px;letter-spacing:.14em;color:#6b6e60}
+  #prompt-letter{font-size:54px;line-height:1;font-weight:800;color:var(--green);letter-spacing:-.01em}
+  #prompt-word{font-size:16px;font-weight:600;margin-top:2px}
+  #prompt-ipa{font-size:13px;color:#6b6e60;margin-top:1px;font-family:Consolas,monospace}
+
+  /* ---------- 反馈气泡 ---------- */
+  #bubble{
+    position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 84px);left:50%;transform:translateX(-50%);
+    z-index:15;max-width:min(86vw,420px);text-align:center;
+    background:rgba(28,36,22,.88);color:#fff;font-size:16px;font-weight:600;
+    padding:10px 18px;opacity:0;transition:opacity .25s ease;pointer-events:none;
+  }
+  #bubble.show{opacity:1}
+
+  /* ---------- 开始 / 结算遮罩 ---------- */
+  .overlay{
+    position:fixed;inset:0;z-index:30;display:none;align-items:center;justify-content:center;
+    background:rgba(191,227,242,.92);padding:20px;
+  }
+  .overlay.show{display:flex}
+  .panel{
+    background:var(--paper);border:1px solid var(--line);border-top:5px solid var(--green);
+    max-width:400px;width:100%;padding:26px 24px 22px;text-align:center;
+    box-shadow:0 0 0 1px rgba(255,255,255,.5) inset;
+  }
+  .panel h1{font-size:26px;font-weight:800;letter-spacing:.01em}
+  .panel .sub{font-size:14px;color:#55584e;margin-top:6px;line-height:1.6}
+  .panel .row{display:flex;gap:10px;justify-content:center;margin-top:8px;flex-wrap:wrap}
+  .panel .chip{font-size:12.5px;color:#4c4f43;background:#eef2e6;border:1px solid var(--line);padding:5px 12px}
+  .btn{
+    display:inline-block;margin-top:18px;padding:13px 34px;font-size:18px;font-weight:700;
+    color:#fff;background:var(--green);border:none;cursor:pointer;letter-spacing:.06em;
+  }
+  .btn:active{background:var(--green-dk)}
+  .btn.ghost{background:#fff;color:var(--green);border:1px solid var(--green);font-size:14px;padding:10px 20px;margin-top:10px}
+  .mini-link{display:inline-block;margin-top:14px;font-size:12.5px;color:#55584e;text-decoration:underline;pointer-events:auto}
+  /* 结算 */
+  #settle-stats{display:flex;justify-content:center;gap:22px;margin-top:16px}
+  #settle-stats .stat{text-align:center}
+  #settle-stats .num{font-size:30px;font-weight:800;color:var(--green)}
+  #settle-stats .cap{font-size:12px;color:#6b6e60;margin-top:2px}
+  #egg{margin:14px auto 0;width:74px;display:block}
+  #settle-egg-text{font-size:13px;color:#55584e;margin-top:6px}
+  /* 错误提示 */
+  #gl-error{
+    position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:40;display:none;
+    background:#fff3f0;color:#8a3a2a;border:1px solid #e0b3a8;padding:14px 20px;font-size:14px;max-width:86vw;text-align:center;
+  }
+
+  /* ---------- 安装引导条 ---------- */
+  #install-banner{
+    position:fixed;left:0;right:0;bottom:0;z-index:25;display:flex;align-items:center;gap:10px;
+    background:#1c2416;color:#fff;padding:10px 14px;font-size:13px;line-height:1.5;
+  }
+  #install-banner .ico{flex:none;width:34px;height:34px}
+  #install-text{flex:1}
+  #install-btn{
+    flex:none;background:var(--green-lt);color:#fff;border:none;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;display:none;
+  }
+  #install-close{flex:none;background:none;border:none;color:#cfd6c4;font-size:20px;cursor:pointer;padding:2px 6px}
+  @media (max-width:480px){
+    #prompt-letter{font-size:44px}
+    .panel h1{font-size:22px}
+  }
+</style>
+</head>
+<body>
+  <canvas id="scene" touch-action="none"></canvas>
+  <div id="gl-error"></div>
+
+  <!-- 顶部 HUD -->
+  <div id="topbar">
+    <div id="progress" title="任务进度">
+      <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+    </div>
+    <div id="coin-wrap" title="金币（方块银行）">
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+        <circle cx="10" cy="10" r="9" fill="#f2c14e" stroke="#b8860b" stroke-width="1.5"/>
+        <circle cx="10" cy="10" r="5.4" fill="none" stroke="#b8860b" stroke-width="1.2"/>
+        <path d="M10 6.2v7.6M7.6 8.4h4.8M7.6 11.6h4.8" stroke="#b8860b" stroke-width="1.4" fill="none"/>
+      </svg>
+      <span id="coin-num">0</span>
+    </div>
+    <button class="icon-btn" id="btn-sound" title="声音开关" aria-label="声音开关">
+      <svg id="icon-sound-on" viewBox="0 0 24 24" fill="none" stroke="#1c2416" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 5 6.5 9H3v6h3.5L11 19V5z" fill="#1c2416" stroke="none"/>
+        <path d="M15 9.5a4 4 0 0 1 0 5M17.5 7a7.5 7.5 0 0 1 0 10"/>
+      </svg>
+      <svg id="icon-sound-off" viewBox="0 0 24 24" fill="none" stroke="#8a3a2a" stroke-width="1.8" stroke-linecap="round" style="display:none">
+        <path d="M11 5 6.5 9H3v6h3.5L11 19V5z" fill="#8a3a2a" stroke="none"/>
+        <path d="M16 9.8l5 4.4M21 9.8l-5 4.4"/>
+      </svg>
+    </button>
+    <a class="icon-btn" href="./check.html" title="设备自检（P0 四项）" aria-label="设备自检" style="text-decoration:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#1c2416" stroke-width="1.8" stroke-linecap="round">
+        <rect x="4" y="4" width="16" height="16"/><path d="M8.5 12.2l2.4 2.4 4.8-5"/>
+      </svg>
+    </a>
+  </div>
+
+  <!-- 任务卡 -->
+  <div id="prompt-card">
+    <div class="p1">TAP THE LETTER · 点一点</div>
+    <div id="prompt-letter">A</div>
+    <div id="prompt-word">apple · 苹果</div>
+    <div id="prompt-ipa">/æ/</div>
+  </div>
+
+  <!-- 反馈气泡 -->
+  <div id="bubble"></div>
+
+  <!-- 开始遮罩 -->
+  <div class="overlay show" id="overlay-start">
+    <div class="panel">
+      <h1>字母港 · Lesson 1</h1>
+      <p class="sub">听发音，点一点对应的字母方块。<br>3 个任务 · 约 2 分钟 · A / B / C</p>
+      <div class="row">
+        <span class="chip">听音辨字母</span><span class="chip">金币奖励</span><span class="chip">集方块</span>
+      </div>
+      <button class="btn" id="btn-start">开始冒险</button>
+      <br>
+      <a class="mini-link" href="./check.html">先跑一遍设备自检（华为 nova 14 Ultra · P0 四项）</a>
+    </div>
+  </div>
+
+  <!-- 结算遮罩 -->
+  <div class="overlay" id="overlay-settle">
+    <div class="panel">
+      <h1>任务完成！</h1>
+      <div id="settle-stats">
+        <div class="stat"><div class="num" id="settle-coins">0</div><div class="cap">金币 · 方块银行</div></div>
+        <div class="stat"><div class="num" id="settle-blocks">+0</div><div class="cap">建造方块</div></div>
+      </div>
+      <svg id="egg" viewBox="0 0 74 92" aria-label="宠物蛋">
+        <ellipse cx="37" cy="50" rx="30" ry="38" fill="#eef2e6" stroke="#4c7a2f" stroke-width="2.5"/>
+        <ellipse cx="27" cy="38" rx="7" ry="9" fill="#ffffff" opacity=".8"/>
+        <circle cx="45" cy="58" r="6" fill="#79b03f" opacity=".55"/>
+        <circle cx="30" cy="66" r="4.4" fill="#5aa9d6" opacity=".55"/>
+        <circle cx="48" cy="34" r="3.6" fill="#79b03f" opacity=".45"/>
+        <path d="M20 26l6 6M74 26l-6 6" stroke="none"/>
+      </svg>
+      <p id="settle-egg-text">获得「宠物蛋」一颗——继续每天学习，它就会孵化哦！</p>
+      <button class="btn" id="btn-replay">再玩一次</button>
+    </div>
+  </div>
+
+  <!-- 安装引导条（未安装到桌面时显示） -->
+  <div id="install-banner">
+    <svg class="ico" viewBox="0 0 34 34" aria-hidden="true">
+      <rect x="1.5" y="1.5" width="31" height="31" fill="#4c7a2f" stroke="#3c5d22" stroke-width="2"/>
+      <text x="17" y="23.5" text-anchor="middle" font-size="18" font-weight="bold" fill="#fff" font-family="Segoe UI,sans-serif">A</text>
+    </svg>
+    <span id="install-text"></span>
+    <button id="install-btn">立即安装</button>
+    <button id="install-close" title="关闭">×</button>
+  </div>
+
+  <script src="./vendor/babylon.js"></script>
+  <script src="./js/game.js"></script>
+  <script>
+    /* Service Worker 注册（PWA 离线与安装的前提） */
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('./sw.js').catch(function () {});
+      });
+    }
+    /* 安装引导：按平台给一步到位的指引 */
+    (function () {
+      var banner = document.getElementById('install-banner');
+      var standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+      if (standalone) { banner.remove(); return; }
+      var ua = navigator.userAgent, tip;
+      if (/HarmonyOS|HUAWEI|Huawei/i.test(ua)) {
+        tip = '装到桌面：华为浏览器菜单 → 「添加到桌面」，之后像 App 一样点开。';
+      } else if (/iPhone|iPad|iPod/i.test(ua)) {
+        tip = '装到桌面：Safari 分享按钮 → 「添加到主屏幕」。';
+      } else if (/Android/i.test(ua)) {
+        tip = '装到桌面：Chrome 菜单 → 「安装应用 / 添加到主屏幕」。';
+      } else {
+        tip = '电脑可先体验；把本页发到手机，即可安装到手机桌面。';
+      }
+      document.getElementById('install-text').textContent = tip;
+      var deferred = null, btn = document.getElementById('install-btn');
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault(); deferred = e; btn.style.display = 'inline-block';
+        document.getElementById('install-text').textContent = '一键安装「爱莎英语」到手机桌面。';
+      });
+      btn.addEventListener('click', function () {
+        if (!deferred) return;
+        deferred.prompt();
+        deferred.userChoice.then(function () { deferred = null; btn.style.display = 'none'; });
+      });
+      document.getElementById('install-close').addEventListener('click', function () { banner.remove(); });
+    })();
+  </script>
+</body>
+</html>
